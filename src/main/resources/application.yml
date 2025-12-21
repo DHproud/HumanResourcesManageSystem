@@ -1,0 +1,26 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/hrms_db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8
+    username: root
+    password: oht1314rjlx
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+# 【新增】JWT 自定义配置
+jwt:
+  # 密钥：必须足够复杂，切勿泄露给他人！建议随机生成一串长字符
+  secret: ThisIsAVeryLongSecretKeyForHumanManageSystem2025
+  # 过期时间：单位毫秒，这里设置为 24小时 (1000 * 60 * 60 * 24)
+  expiration: 86400000
+  # 请求头名称
+  header: Authorization
