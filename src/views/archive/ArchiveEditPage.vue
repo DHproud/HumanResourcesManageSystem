@@ -61,6 +61,11 @@
         <div style="text-align:right;margin-top:12px;">
           <!-- 专员提交为“提交复核”，经理直接保存 -->
           <el-button type="primary" @click="onSave">保存（提交复核）</el-button>
+
+          <!-- 上传照片按钮：跳转到 UploadPhoto 页面（使用路由 name='ArchiveUploadPhoto'） -->
+          <el-button type="warning" @click="goToUpload" style="margin-left:8px;">
+            上传照片
+          </el-button>
         </div>
       </el-form>
     </div>
@@ -79,8 +84,9 @@ const route = useRoute()
 const router = useRouter()
 const id = route.params.id
 const archive = ref(null)
-const role = localStorage.getItem('role') || ''
+const role = (localStorage.getItem('role') || '').toUpperCase()
 const username = localStorage.getItem('username') || ''
+const formRef = ref(null)
 
 onMounted(async () => {
   try {
@@ -104,13 +110,11 @@ async function onSave() {
   // 如果当前是人事专员，则提交修改申请（不直接写库）
   if (role === 'SPECIALIST') {
     try {
-      // 前端再做一次保护：确保是专员
       const payload = {
         archiveId: archive.value.id,
         newData: JSON.stringify(archive.value),
         requester: username || ''
       }
-      // 注意：这里必须带上 Role header，后端会从 header 校验权限
       const headers = { Role: role }
       const res = await request.post('/api/archive/editRequest/submit', payload, { headers })
       if (res && res.code === 200) {
@@ -139,6 +143,22 @@ async function onSave() {
   } catch (e) {
     console.error(e)
     ElMessage.error('保存失败：网络或服务器错误')
+  }
+}
+
+// 跳转到 UploadPhoto 页面（使用路由 name='ArchiveUploadPhoto'）
+function goToUpload() {
+  const aid = (archive.value && archive.value.id) ? archive.value.id : id
+  if (!aid) {
+    ElMessage.warning('无法跳转：档案 ID 不存在')
+    return
+  }
+  // 使用你已注册的路由名 ArchiveUploadPhoto；传 params 时把 id 强制为 string（避免大整数精度问题）
+  try {
+    router.push({ name: 'ArchiveUploadPhoto', params: { id: String(aid) } })
+  } catch (err) {
+    // 如果命名路由在当前路由层级未注册，退回到 path 形式跳转
+    router.push({ path: `/archive/upload-photo/${encodeURIComponent(String(aid))}` })
   }
 }
 

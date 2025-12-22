@@ -211,9 +211,11 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 
+const router = useRouter()
 const formRef = ref(null)
 
 // 表单数据 (与后端 Archive.java 实体类完全对应)
@@ -403,17 +405,52 @@ function onStandardChange(idStr) {
   }
 }
 
-// 提交表单
+// 提交表单（修改：提交成功后跳转到上传照片页面；增加 find 回退）
 const submitForm = async () => {
   formRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        // 发送完整表单，包含 salaryStandardIdStr/code/name 字段，后端按需存储
         const payload = { ...form }
         const res = await request.post('/api/archive/add', payload)
+
         if (res && res.code === 200) {
-          ElMessage.success('档案登记成功！等待经理复核。')
-          resetForm()
+          ElMessage.success('档案登记成功！即将跳转到照片上传页面。')
+
+          // 1) 优先尝试后端直接返回的 id
+          let archiveId = null
+          if (res.data) {
+            archiveId = res.data.id || res.data.archiveId || res.data.entityId || null
+          }
+
+          // 2) 若没有 id，则回退到查询接口 /api/archive/find
+          if (!archiveId) {
+            try {
+              console.debug('archive add returned no id, trying /api/archive/find with name and idCard', form.name, form.idCard)
+              const findRes = await request.get('/api/archive/find', { params: { name: form.name, idCard: form.idCard } })
+              if (findRes && findRes.code === 200) {
+                const data = findRes.data
+                if (Array.isArray(data) && data.length > 0) {
+                  archiveId = data[0].id || data[0].archiveId
+                } else if (data && data.id) {
+                  archiveId = data.id
+                }
+              }
+            } catch (e) {
+              console.error('call /api/archive/find failed', e)
+            }
+          }
+
+          // 3) if found id -> redirect; otherwise notify user to manually upload
+          if (archiveId) {
+            console.debug('got archiveId', archiveId)
+            router.push({ path: `/archive/upload-photo/${encodeURIComponent(String(archiveId))}` })
+            return
+          } else {
+            // do not clear form here — user may want to retry or manually open upload page
+            ElMessage.warning('已登记但无法获取档案 ID，请手动进入“上传照片”页面上传照片（或联系系统管理员）。')
+            console.warn('archive add returned but no id and find did not return id; add response:', res)
+            return
+          }
         } else {
           ElMessage.error(res?.msg || '登记失败')
         }

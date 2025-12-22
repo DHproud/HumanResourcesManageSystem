@@ -55,6 +55,8 @@ const routes = [
             // 人事专员（登记）
             { path: 'archive/register', name: 'ArchiveRegister', component: () => import('../views/archive/ArchiveRegister.vue'), meta: { title: '档案登记', roles: ['SPECIALIST'] } },
 
+            {path: 'archive/upload-photo/:id', name: 'ArchiveUploadPhoto', component: () => import('@/views/archive/UploadPhoto.vue'), props: true, meta: { title: '上传照片', roles: ['SPECIALIST'] }},
+
             // 档案查询：所有登录用户可见
             { path: 'archive/query', name: 'ArchiveQuery', component: () => import('../views/archive/ArchiveSearch.vue'), meta: { title: '档案查询' } },
 
