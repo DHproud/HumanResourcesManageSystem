@@ -50,7 +50,7 @@ public class Archive implements Serializable {
     private String politicalStatus;
 
     // --- 状态与审计 ---
-    // 0:待复核 1:正常
+    // 0:待复核 1:正常 2:已删除
     private Integer status;
     private String registrant; // 登记人
     private LocalDateTime registTime;
@@ -66,4 +66,17 @@ public class Archive implements Serializable {
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    // 以下字段仅用于接收前端查询参数（非数据库字段）
+    @TableField(exist = false)
+    private Integer page;
+
+    @TableField(exist = false)
+    private Integer size;
+
+    @TableField(exist = false)
+    private String startTime;
+
+    @TableField(exist = false)
+    private String endTime;
 }

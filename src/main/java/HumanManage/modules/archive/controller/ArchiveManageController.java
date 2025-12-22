@@ -3,17 +3,12 @@ package HumanManage.modules.archive.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import HumanManage.common.result.Result;
 import HumanManage.modules.archive.entity.Archive;
-import HumanManage.modules.archive.entity.ArchiveQueryVo;
 import HumanManage.modules.archive.service.ArchiveManageService;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
 
-
-/**
- * 独立的查询/变更控制器，不改原 ArchiveController
- * 路由前缀与原有保持一致，避免前端大改
- */
 @RestController
 @RequestMapping("/api/archive")
 public class ArchiveManageController {
@@ -22,20 +17,57 @@ public class ArchiveManageController {
     private ArchiveManageService archiveManageService;
 
     /**
-     * 档案查询：与关系、空条件不限制
+     * 使用 Archive 参数（包含 page/size/status/startTime/endTime）进行查询
+     * 权限增强：若请求来自 SPECIALIST，则强制禁止返回 status=2 的档案，
+     * 实现方式为若 param.status == 2 且 role == SPECIALIST，则将 status 改为 1（或 null），防止查看已删除档案。
      */
     @PostMapping("/search")
-    public Result<IPage<Archive>> search(@RequestBody ArchiveQueryVo vo) {
-        IPage<Archive> page = archiveManageService.queryArchivePage(vo);
+    public Result<IPage<Archive>> search(@RequestBody Archive param, HttpServletRequest request) {
+        String roleHeader = request.getHeader("Role");
+        if (roleHeader == null) roleHeader = request.getHeader("role");
+        boolean isSpecialist = roleHeader != null && "SPECIALIST".equalsIgnoreCase(roleHeader.trim());
+
+        // 调试输出（可保留或换成日志）
+        System.out.println("[DEBUG] /api/archive/search received Archive param = " + param + ", role = " + roleHeader);
+
+        if (isSpecialist && param != null && param.getStatus() != null && param.getStatus() == 2) {
+            // 专员试图查询已删除（2） -> 强制改回只查询正常（1）
+            System.out.println("[SECURITY] SPECIALIST attempted to query status=2; overriding to status=1");
+            param.setStatus(1);
+        }
+
+        IPage<Archive> page = archiveManageService.queryArchivePage(param);
         return Result.success(page);
     }
 
-    /**
-     * 档案变更
-     */
-    @PutMapping("/update")
-    public Result<String> update(@RequestBody Archive archive) {
-        archiveManageService.updateArchive(archive);
-        return Result.success("档案变更成功");
+    @PostMapping("/markDeleted/{id}")
+    public Result<String> markDeleted(@PathVariable Long id, HttpServletRequest request) {
+        String roleHeader = request.getHeader("Role");
+        if (roleHeader == null) roleHeader = request.getHeader("role");
+        if (roleHeader == null || !"MANAGER".equalsIgnoreCase(roleHeader.trim())) {
+            return Result.error("权限不足：只有人事经理可以执行删除操作");
+        }
+        try {
+            archiveManageService.markDeleted(id);
+            return Result.success("档案已标记为已删除");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
     }
+
+    @PostMapping("/recover/{id}")
+    public Result<String> recover(@PathVariable Long id, HttpServletRequest request) {
+        String roleHeader = request.getHeader("Role");
+        if (roleHeader == null) roleHeader = request.getHeader("role");
+        if (roleHeader == null || !"MANAGER".equalsIgnoreCase(roleHeader.trim())) {
+            return Result.error("权限不足：只有人事经理可以执行恢复操作");
+        }
+        try {
+            archiveManageService.recoverArchive(id);
+            return Result.success("档案已恢复为正常状态");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
 }
