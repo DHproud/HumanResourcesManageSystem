@@ -41,6 +41,15 @@
           </el-menu-item>
         </el-submenu>
 
+        <!-- 薪酬管理 - 薪酬专员/薪酬经理 可见薪酬标准页面 -->
+        <el-submenu index="salary" v-if="role === 'SPECIALIST' || role === 'MANAGER'">
+          <template #title>
+            <i class="el-icon-s-finance"></i>
+            <span>薪酬</span>
+          </template>
+          <el-menu-item index="/salary/standard">薪酬标准</el-menu-item>
+        </el-submenu>
+
         <!-- 管理相关 - 仅管理员 -->
         <el-submenu index="sys" v-if="role === 'ADMIN'">
           <template #title>
@@ -49,6 +58,9 @@
           </template>
           <el-menu-item index="/sys/org">机构管理</el-menu-item>
           <el-menu-item index="/sys/position">职位管理</el-menu-item>
+          <!-- 薪酬项目（管理员） -->
+          <el-menu-item index="/sys/salary">薪酬项目</el-menu-item>
+          <el-menu-item index="/salary/review">薪酬复核</el-menu-item>
         </el-submenu>
       </el-menu>
     </el-aside>
@@ -89,9 +101,10 @@ const role = localStorage.getItem('role') || ''
 // active menu: use the current route path
 const activeMenu = computed(() => {
   const p = route.path || '/'
-  // normalize detail/edit paths to their parent menu
   if (p.startsWith('/archive/detail')) return '/archive/query'
   if (p.startsWith('/archive/edit')) return '/archive/query'
+  if (p.startsWith('/salary/standard')) return '/salary/standard'
+  if (p.startsWith('/sys/salary')) return '/sys/salary'
   return p
 })
 
@@ -107,8 +120,8 @@ function logout() {
   router.push({ name: 'Login' })
 }
 
-watch(() => route.path, () => {
-  // activeMenu computed updates automatically
+watch(() => route.path, (p) => {
+  // nothing required; activeMenu is computed from route
 })
 
 function onMenuSelect(index) {
@@ -129,7 +142,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 基础布局（你提供的样式） */
 .layout-container { height: 100vh; display: flex; }
 .aside { background-color: #304156; color: white; display: flex; flex-direction: column; }
 .logo { height: 60px; line-height: 60px; text-align: center; font-size: 20px; font-weight: bold; background-color: #2b3649; }
@@ -137,45 +149,14 @@ onMounted(() => {
 .header { background-color: #fff; border-bottom: 1px solid #e6e6e6; display: flex; align-items: center; justify-content: flex-end; }
 .el-main { background-color: #f0f2f5; padding: 20px; }
 
-/* 覆盖 Element Plus 菜单的默认白色，使侧栏与原来颜色一致 */
-.el-menu-vertical-demo {
-  background: transparent !important; /* 避免白底 */
-  color: rgba(255,255,255,0.95);
+/* 覆盖 Element Plus 菜单样式以保持侧栏深色 */
+.el-menu-vertical-demo { background: transparent !important; color: rgba(255,255,255,0.95); }
+.el-menu-vertical-demo .el-menu-item, .el-menu-vertical-demo .el-submenu__title { color: rgba(255,255,255,0.95) !important; }
+.el-menu-vertical-demo .el-menu-item.is-active, .el-menu-vertical-demo .el-menu-item:hover,
+.el-menu-vertical-demo .el-submenu__title:hover, .el-menu-vertical-demo .el-submenu__title.is-active {
+  background-color: rgba(255,255,255,0.04) !important; color: #fff !important;
 }
 
-/* 菜单项文字白色 */
-.el-menu-vertical-demo .el-menu-item,
-.el-menu-vertical-demo .el-submenu__title {
-  color: rgba(255,255,255,0.95) !important;
-}
-
-/* 鼠标悬浮与选中态的背景、文字颜色调整 */
-.el-menu-vertical-demo .el-menu-item.is-active,
-.el-menu-vertical-demo .el-menu-item:hover,
-.el-menu-vertical-demo .el-submenu__title:hover,
-.el-menu-vertical-demo .el-submenu__title.is-active {
-  background-color: rgba(255,255,255,0.04) !important;
-  color: #fff !important;
-}
-
-/* 菜单图标颜色 */
-.el-menu-vertical-demo .el-menu-item i,
-.el-menu-vertical-demo .el-submenu__title i {
-  color: rgba(255,255,255,0.85) !important;
-}
-
-/* 子菜单箭头颜色 */
-.el-menu-vertical-demo .el-submenu__icon,
-.el-menu-vertical-demo .el-submenu__title .el-submenu__icon {
-  color: rgba(255,255,255,0.6) !important;
-}
-
-/* 保持子菜单背景透明（防止白条） */
-.el-menu-vertical-demo .el-submenu .el-menu {
-  background: transparent !important;
-}
-
-/* header / user 样式（可保留默认） */
 .user { color: #333; margin-right: 8px; }
 .logout { color: #f56c6c; }
 </style>

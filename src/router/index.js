@@ -16,8 +16,26 @@ const routes = [
             // 管理员专属
             { path: 'sys/org', name: 'OrgManage', component: () => import('../views/sys/OrgManage.vue'), meta: { title: '机构管理', roles: ['ADMIN'] } },
             { path: 'sys/position', name: 'PositionManage', component: () => import('../views/sys/PositionManage.vue'), meta: { title: '职位管理', roles: ['ADMIN'] } },
+            { path: 'sys/salary', name: 'SalaryManage', component: () => import('../views/sys/SalaryManage.vue'), meta: { title: '薪酬项目', roles: ['ADMIN'] } },
 
-            // 人事经理（复核）
+            // 薪酬复核（管理员）
+            { path: 'salary/review', name: 'SalaryReviewList', component: () => import('../views/salary/SalaryReviewList.vue'), meta: { title: '薪酬复核', roles: ['ADMIN'] } },
+            // 保持原样（如果你以后改为 code 匹配可调整）
+            { path: 'salary/review/:id', name: 'SalaryReviewDetail', component: () => import('../views/salary/SalaryReviewDetail.vue'), props: true, meta: { title: '薪酬复核明细', roles: ['ADMIN'] } },
+
+            // 薪酬标准（薪酬专员/薪酬经理）
+            { path: 'salary/standard', name: 'SalaryStandard', component: () => import('../views/salary/SalaryStandard.vue'), meta: { title: '薪酬标准', roles: ['SPECIALIST', 'MANAGER'] } },
+
+            // 新增（创建）薪酬标准 —— 无参数
+            { path: 'salary/standard/edit', name: 'SalaryStandardEdit', component: () => import('../views/salary/SalaryStandardEdit.vue'), meta: { title: '新增薪酬标准', roles: ['SPECIALIST', 'MANAGER'] } },
+
+            // 编辑（专用修改页面，按 code 查找并编辑）
+            { path: 'salary/standard/change/:code', name: 'SalaryStandardChange', component: () => import('../views/salary/SalaryStandardChange.vue'), props: true, meta: { title: '编辑薪酬标准', roles: ['SPECIALIST', 'MANAGER'] } },
+
+            // 查看（只读）—— 可从外部直接打开（也可仅使用列表内弹窗）
+            { path: 'salary/standard/view/:code', name: 'SalaryStandardView', component: () => import('../views/salary/SalaryStandardChange.vue'), props: route => ({ code: route.params.code, readonly: true }), meta: { title: '查看薪酬标准', roles: ['SPECIALIST', 'MANAGER'] } },
+
+            // 档案相关
             { path: 'archive/review', name: 'ArchiveReview', component: () => import('../views/archive/ArchiveReviewList.vue'), meta: { title: '档案复核', roles: ['MANAGER'] } },
 
             // 新增：仅用于“已有档案修改”的复核（独立页面，不改原复核页）
@@ -72,8 +90,6 @@ router.beforeEach((to, from, next) => {
     } else {
         // 无权限访问
         ElMessage.warning('您的权限不足，无法访问此页面')
-        // 取消导航（保持在当前页），或者跳转到首页或 403 页面：
-        // return next({ name: 'Dashboard' })
         return next(false)
     }
 })
