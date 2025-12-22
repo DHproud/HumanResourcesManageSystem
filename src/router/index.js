@@ -18,37 +18,47 @@ const routes = [
             { path: 'sys/position', name: 'PositionManage', component: () => import('../views/sys/PositionManage.vue'), meta: { title: '职位管理', roles: ['ADMIN'] } },
             { path: 'sys/salary', name: 'SalaryManage', component: () => import('../views/sys/SalaryManage.vue'), meta: { title: '薪酬项目', roles: ['ADMIN'] } },
 
-            // 薪酬复核（管理员）
+            // 薪酬标准复核（管理员） — 保持 path 为 /salary/review（ADMIN 专属）
             { path: 'salary/review', name: 'SalaryReviewList', component: () => import('../views/salary/SalaryReviewList.vue'), meta: { title: '薪酬复核', roles: ['ADMIN'] } },
-            // 保持原样（如果你以后改为 code 匹配可调整）
             { path: 'salary/review/:id', name: 'SalaryReviewDetail', component: () => import('../views/salary/SalaryReviewDetail.vue'), props: true, meta: { title: '薪酬复核明细', roles: ['ADMIN'] } },
 
             // 薪酬标准（薪酬专员/薪酬经理）
-            { path: 'salary/standard', name: 'SalaryStandard', component: () => import('../views/salary/SalaryStandard.vue'), meta: { title: '薪酬标准', roles: ['SPECIALIST', 'MANAGER'] } },
+            { path: 'salary/standard', name: 'SalaryStandard', component: () => import('../views/salary/SalaryStandard.vue'), meta: { title: '薪酬标准', roles: ['SPECIALIST','MANAGER'] } },
+
+            // 薪酬发放：列表与登记（薪酬专员）
+            { path: 'salary/payrun', name: 'PayRunList', component: () => import('../views/salary/PayRunList.vue'), meta: { title: '薪酬发放单', roles: ['SPECIALIST'] } },
+            { path: 'salary/payrun/register/:id', name: 'PayRunRegister', component: () => import('../views/salary/PayRunRegister.vue'), props: true, meta: { title: '发放登记', roles: ['SPECIALIST'] } },
+
+            // 薪酬发放复核（经理） — 改为 /salary/pushreview，避免与管理员复核路径冲突
+            { path: 'salary/pushreview', name: 'PayRunReviewList', component: () => import('@/views/salary/PayRunReviewList.vue'), meta: { title: '薪酬发放复核', roles: ['MANAGER'] }},
+            { path: 'salary/pushreview/:id', name: 'PayRunReviewDetail', component: () => import('@/views/salary/PayRunReviewDetail.vue'), props: true, meta: { title: '薪酬发放复核明细', roles: ['MANAGER'] }},
+
+            { path: 'salary/query', name: 'PayRunSearch', component: () => import('@/views/salary/PayRunSearch.vue'), meta: { title: '薪酬发放查询' } },
+            { path: 'salary/query/:id', name: 'PayRunQueryDetail', component: () => import('@/views/salary/PayRunQueryDetail.vue'), props: true, meta: { title: '薪酬发放明细' } },
 
             // 新增（创建）薪酬标准 —— 无参数
-            { path: 'salary/standard/edit', name: 'SalaryStandardEdit', component: () => import('../views/salary/SalaryStandardEdit.vue'), meta: { title: '新增薪酬标准', roles: ['SPECIALIST', 'MANAGER'] } },
+            { path: 'salary/standard/edit', name: 'SalaryStandardEdit', component: () => import('../views/salary/SalaryStandardEdit.vue'), meta: { title: '新增薪酬标准', roles: ['SPECIALIST','MANAGER'] } },
 
             // 编辑（专用修改页面，按 code 查找并编辑）
-            { path: 'salary/standard/change/:code', name: 'SalaryStandardChange', component: () => import('../views/salary/SalaryStandardChange.vue'), props: true, meta: { title: '编辑薪酬标准', roles: ['SPECIALIST', 'MANAGER'] } },
+            { path: 'salary/standard/change/:code', name: 'SalaryStandardChange', component: () => import('../views/salary/SalaryStandardChange.vue'), props: true, meta: { title: '编辑薪酬标准', roles: ['SPECIALIST','MANAGER'] } },
 
-            // 查看（只读）—— 可从外部直接打开（也可仅使用列表内弹窗）
-            { path: 'salary/standard/view/:code', name: 'SalaryStandardView', component: () => import('../views/salary/SalaryStandardChange.vue'), props: route => ({ code: route.params.code, readonly: true }), meta: { title: '查看薪酬标准', roles: ['SPECIALIST', 'MANAGER'] } },
+            // 查看（只读）
+            { path: 'salary/standard/view/:code', name: 'SalaryStandardView', component: () => import('../views/salary/SalaryStandardChange.vue'), props: route => ({ code: route.params.code, readonly: true }), meta: { title: '查看薪酬标准', roles: ['SPECIALIST','MANAGER'] } },
 
             // 档案相关
             { path: 'archive/review', name: 'ArchiveReview', component: () => import('../views/archive/ArchiveReviewList.vue'), meta: { title: '档案复核', roles: ['MANAGER'] } },
 
-            // 新增：仅用于“已有档案修改”的复核（独立页面，不改原复核页）
+            // 新增：仅用于“已有档案修改”的复核（独立页面）
             { path: 'archive/modify-review', name: 'ArchiveModifyReview', component: () => import('../views/archive/ArchiveModifyReviewList.vue'), meta: { title: '已存档修改复核', roles: ['MANAGER'] } },
             { path: 'archive/modify-review/:id', name: 'ArchiveModifyReviewDetail', component: () => import('../views/archive/ArchiveModifyReviewDetail.vue'), props: true, meta: { title: '已存档修改复核明细', roles: ['MANAGER'] } },
 
             // 人事专员（登记）
             { path: 'archive/register', name: 'ArchiveRegister', component: () => import('../views/archive/ArchiveRegister.vue'), meta: { title: '档案登记', roles: ['SPECIALIST'] } },
 
-            // 档案查询：三类都可以看（不声明 roles => 所有人已登录可见）
+            // 档案查询：所有登录用户可见
             { path: 'archive/query', name: 'ArchiveQuery', component: () => import('../views/archive/ArchiveSearch.vue'), meta: { title: '档案查询' } },
 
-            // 明细页：所有登录用户可查看（你也可以限制）
+            // 明细页：所有登录用户可查看
             { path: 'archive/detail/:id', name: 'ArchiveDetail', component: () => import('../views/archive/ArchiveDetail.vue'), props: true, meta: { title: '档案明细' } },
 
             // 编辑页：仅人事专员可访问
@@ -62,33 +72,35 @@ const router = createRouter({
     routes
 })
 
+// 更健壮的路由守卫：大小写不敏感，兼容未设置 role 的情况
 router.beforeEach((to, from, next) => {
-    const token = localStorage.getItem('token') // 你的登录逻辑把 token 存在这里
-    const role = localStorage.getItem('role')   // Login.vue 已经保存 role
+    const token = localStorage.getItem('token') // 登录 token
+    const rawRole = (localStorage.getItem('role') || '').toString().trim()
+    const role = rawRole ? rawRole.toUpperCase() : ''
 
-    // 未登录且访问非登录页 -> 强制跳转登录
+    // 未登录 & 访问非登录页 -> 强制跳登录
     if (!token && to.name !== 'Login') {
         ElMessage.warning('请先登录')
         return next({ name: 'Login' })
     }
 
-    // 已登录却访问登录页 -> 跳转首页
+    // 已登录但访问登录页 -> 跳转首页
     if (token && to.name === 'Login') {
         return next({ path: '/' })
     }
 
-    // 如果路由没有设置 roles，则默认允许（只要已登录）
+    // 如果路由没有 roles 定义，允许访问
     const roles = to.meta && to.meta.roles
     if (!roles || roles.length === 0) {
         return next()
     }
 
-    // 路由声明了 roles：判断当前用户 role 是否包含在内
-    // 注意：role 可能为 null/undefined，如果没有则视为无权限
-    if (role && roles.includes(role)) {
+    // 将路由允许角色统一转为大写比较
+    const allowed = roles.map(r => (r || '').toString().trim().toUpperCase())
+
+    if (role && allowed.includes(role)) {
         return next()
     } else {
-        // 无权限访问
         ElMessage.warning('您的权限不足，无法访问此页面')
         return next(false)
     }

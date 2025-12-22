@@ -92,7 +92,7 @@
         <el-row :gutter="24">
           <el-col :span="8">
             <el-form-item label="职位名称" prop="positionName">
-              <!-- 【关键修改】职位从手动输入改为下拉选择 -->
+              <!-- 职位下拉 -->
               <el-select
                   v-model="form.positionName"
                   placeholder="请先选择三级机构"
@@ -118,9 +118,27 @@
               </el-select>
             </el-form-item>
           </el-col>
+
+          <!-- 【关键修改】薪酬标准改为下拉选择，从后端加载 -->
           <el-col :span="8">
-            <el-form-item label="薪酬标准" prop="salaryStandardName">
-              <el-input v-model="form.salaryStandardName" placeholder="输入薪酬标准" />
+            <el-form-item label="薪酬标准" prop="salaryStandardIdStr">
+              <el-select
+                  v-model="form.salaryStandardIdStr"
+                  placeholder="请选择薪酬标准（编号 - 名称）"
+                  filterable
+                  clearable
+                  :loading="loadingStandards"
+                  :disabled="standards.length === 0"
+                  @change="onStandardChange"
+                  style="width: 100%"
+              >
+                <el-option
+                    v-for="s in standards"
+                    :key="s.id"
+                    :label="s.code + ' - ' + s.name"
+                    :value="s.id"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -221,6 +239,9 @@ const form = reactive({
   // 职位薪酬
   positionName: '', // 这里存储选中的职位名称
   jobTitleName: '',
+  // 薪酬标准存储：idStr（字符串）为主，同时记录 code/name 以兼容后端字段
+  salaryStandardIdStr: '',
+  salaryStandardCode: '',
   salaryStandardName: '',
 
   // 详细信息
@@ -238,7 +259,8 @@ const rules = {
   firstLevelOrgId: [{ required: true, message: '请选择一级机构', trigger: 'change' }],
   secondLevelOrgId: [{ required: true, message: '请选择二级机构', trigger: 'change' }],
   thirdLevelOrgId: [{ required: true, message: '请选择三级机构', trigger: 'change' }],
-  positionName: [{ required: true, message: '请选择职位', trigger: 'change' }]
+  positionName: [{ required: true, message: '请选择职位', trigger: 'change' }],
+  salaryStandardIdStr: [{ required: true, message: '请选择薪酬标准', trigger: 'change' }]
 }
 
 // 数据源
@@ -246,6 +268,10 @@ const level1List = ref([])
 const level2List = ref([])
 const level3List = ref([])
 const positionList = ref([]) // 职位列表数据源
+
+// 薪酬标准下拉相关
+const standards = ref([]) // { id: '123', code: 'STD...', name: '...' }
+const loadingStandards = ref(false)
 
 // 计算属性：机构全名
 const fullOrgName = computed(() => {
@@ -259,12 +285,18 @@ const fullOrgName = computed(() => {
 // 初始化
 onMounted(async () => {
   level1List.value = await getOrgList(0)
+  fetchSalaryStandards()
 })
 
 // 通用获取机构
 const getOrgList = async (parentId) => {
-  const res = await request.get(`/api/org/list/${parentId}`)
-  return res.code === 200 ? res.data : []
+  try {
+    const res = await request.get(`/api/org/list/${parentId}`)
+    return res && res.code === 200 ? res.data : []
+  } catch (e) {
+    console.error('getOrgList error', e)
+    return []
+  }
 }
 
 // 一级机构变化
@@ -301,11 +333,73 @@ const handleThirdChange = async (val) => {
   positionList.value = []
 
   if (val) {
-    // 【关键】根据三级机构ID获取职位列表
-    const res = await request.get(`/api/position/list?orgId=${val}`)
-    if (res.code === 200) {
-      positionList.value = res.data
+    // 根据三级机构ID获取职位列表
+    try {
+      const res = await request.get(`/api/position/list?orgId=${val}`)
+      if (res && res.code === 200) {
+        positionList.value = res.data
+      } else {
+        positionList.value = []
+      }
+    } catch (e) {
+      console.error('get positions error', e)
+      positionList.value = []
     }
+  }
+}
+
+// ===== 薪酬标准下拉相关 =====
+async function fetchSalaryStandards() {
+  loadingStandards.value = true
+  try {
+    // 拉取较大数量以做下拉用（可根据实际数据调整）
+    const res = await request.get('/api/salary/standard/page', { params: { page: 1, size: 1000 } })
+    if (res && res.code === 200) {
+      const recs = res.data?.records || []
+      // recs may be wrapper { standard: {...} } or direct standard objects
+      standards.value = recs.map(r => {
+        const s = r.standard || r
+        const idStr = s.id != null ? String(s.id) : (r.standardIdStr ? String(r.standardIdStr) : null)
+        return { id: idStr, code: s.standardCode || '', name: s.standardName || '' }
+      }).filter(x => x.code)
+    } else {
+      standards.value = []
+    }
+  } catch (e) {
+    console.error('fetchSalaryStandards error', e)
+    standards.value = []
+  } finally {
+    loadingStandards.value = false
+  }
+}
+
+// 下拉选择变更：回填 code/name/id
+function onStandardChange(idStr) {
+  if (!idStr) {
+    form.salaryStandardIdStr = ''
+    form.salaryStandardCode = ''
+    form.salaryStandardName = ''
+    return
+  }
+  const s = standards.value.find(x => x.id === idStr)
+  if (s) {
+    form.salaryStandardIdStr = s.id
+    form.salaryStandardCode = s.code
+    form.salaryStandardName = s.name
+  } else {
+    // fallback: try to re-fetch or search by code
+    fetchSalaryStandards().then(() => {
+      const ss = standards.value.find(x => x.id === idStr)
+      if (ss) {
+        form.salaryStandardIdStr = ss.id
+        form.salaryStandardCode = ss.code
+        form.salaryStandardName = ss.name
+      } else {
+        form.salaryStandardIdStr = ''
+        form.salaryStandardCode = ''
+        form.salaryStandardName = ''
+      }
+    })
   }
 }
 
@@ -314,14 +408,17 @@ const submitForm = async () => {
   formRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        const res = await request.post('/api/archive/add', form)
-        if (res.code === 200) {
+        // 发送完整表单，包含 salaryStandardIdStr/code/name 字段，后端按需存储
+        const payload = { ...form }
+        const res = await request.post('/api/archive/add', payload)
+        if (res && res.code === 200) {
           ElMessage.success('档案登记成功！等待经理复核。')
           resetForm()
         } else {
-          ElMessage.error(res.msg || '登记失败')
+          ElMessage.error(res?.msg || '登记失败')
         }
       } catch (error) {
+        console.error('archive add error', error)
         ElMessage.error('系统繁忙，请稍后再试')
       }
     }
@@ -330,13 +427,17 @@ const submitForm = async () => {
 
 // 重置
 const resetForm = () => {
-  formRef.value.resetFields()
+  if (formRef.value) formRef.value.resetFields()
   form.firstLevelOrgName = ''
   form.secondLevelOrgName = ''
   form.thirdLevelOrgName = ''
   level2List.value = []
   level3List.value = []
   positionList.value = []
+  // also clear salary standard selection
+  form.salaryStandardIdStr = ''
+  form.salaryStandardCode = ''
+  form.salaryStandardName = ''
 }
 </script>
 

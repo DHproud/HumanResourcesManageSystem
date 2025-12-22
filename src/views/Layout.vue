@@ -35,19 +35,30 @@
             档案复核
           </el-menu-item>
 
-          <!-- 新增：已有档案修改复核（仅经理） -->
+          <!-- 已存档修改复核（仅经理） -->
           <el-menu-item index="/archive/modify-review" v-if="role === 'MANAGER'">
             已存档修改复核
           </el-menu-item>
         </el-submenu>
 
-        <!-- 薪酬管理 - 薪酬专员/薪酬经理 可见薪酬标准页面 -->
+        <!-- 薪酬管理 -->
         <el-submenu index="salary" v-if="role === 'SPECIALIST' || role === 'MANAGER'">
           <template #title>
             <i class="el-icon-s-finance"></i>
             <span>薪酬</span>
           </template>
+
+          <!-- 薪酬标准 对 专员/经理 可见 -->
           <el-menu-item index="/salary/standard">薪酬标准</el-menu-item>
+
+          <!-- 专员：薪酬发放单（登记） -->
+          <el-menu-item index="/salary/payrun" v-if="role === 'SPECIALIST'">薪酬发放单</el-menu-item>
+
+          <!-- 经理：薪酬发放复核（使用 pushreview 路径） -->
+          <el-menu-item index="/salary/pushreview" v-if="role === 'MANAGER'">薪酬发放复核</el-menu-item>
+
+          <!-- 薪酬发放查询（所有登录用户可见，按需显示） -->
+          <el-menu-item index="/salary/query">薪酬发放查询</el-menu-item>
         </el-submenu>
 
         <!-- 管理相关 - 仅管理员 -->
@@ -60,6 +71,7 @@
           <el-menu-item index="/sys/position">职位管理</el-menu-item>
           <!-- 薪酬项目（管理员） -->
           <el-menu-item index="/sys/salary">薪酬项目</el-menu-item>
+          <!-- 管理员关于薪酬标准的复核（保持 /salary/review） -->
           <el-menu-item index="/salary/review">薪酬复核</el-menu-item>
         </el-submenu>
       </el-menu>
@@ -76,7 +88,7 @@
         </div>
 
         <div style="padding-right:16px; display:flex; align-items:center; gap:12px;">
-          <span class="user">当前用户：{{ username }}</span>
+          <span class="user">当前用户：{{ username }} <span v-if="role">（角色：{{ role }})</span></span>
           <el-button type="text" @click="logout" class="logout">退出</el-button>
         </div>
       </el-header>
@@ -89,22 +101,47 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
 
-const username = ref(localStorage.getItem('username') || '未登录')
-const role = localStorage.getItem('role') || ''
+// 响应式用户名与角色（角色统一大写以避免大小写问题）
+const username = ref((localStorage.getItem('username') || '未登录').toString())
+const role = ref((localStorage.getItem('role') || '').toString().trim().toUpperCase())
 
-// active menu: use the current route path
+// 监听 storage 变化，保持多标签/切换时 UI 同步
+function onStorageEvent(e) {
+  if (!e) return
+  if (e.key === 'username') {
+    username.value = (e.newValue || '未登录').toString()
+  }
+  if (e.key === 'role') {
+    role.value = (e.newValue || '').toString().trim().toUpperCase()
+  }
+}
+window.addEventListener && window.addEventListener('storage', onStorageEvent)
+
+// active menu: map route paths to menu index keys
 const activeMenu = computed(() => {
   const p = route.path || '/'
-  if (p.startsWith('/archive/detail')) return '/archive/query'
-  if (p.startsWith('/archive/edit')) return '/archive/query'
+  // 档案
+  if (p.startsWith('/archive/detail') || p.startsWith('/archive/edit') || p.startsWith('/archive/modify-review')) return '/archive/query'
+  // 薪酬标准
   if (p.startsWith('/salary/standard')) return '/salary/standard'
+  // 薪酬发放登记（专员）
+  if (p.startsWith('/salary/payrun')) return '/salary/payrun'
+  // 薪酬标准复核（管理员）
+  if (p.startsWith('/salary/review')) return '/salary/review'
+  // 薪酬发放复核（经理）
+  if (p.startsWith('/salary/pushreview')) return '/salary/pushreview'
+  // 薪酬查询
+  if (p.startsWith('/salary/query')) return '/salary/query'
+  // 管理相关
   if (p.startsWith('/sys/salary')) return '/sys/salary'
+  if (p.startsWith('/sys/org')) return '/sys/org'
+  if (p.startsWith('/sys/position')) return '/sys/position'
   return p
 })
 
@@ -117,12 +154,11 @@ function logout() {
   localStorage.removeItem('token')
   localStorage.removeItem('role')
   localStorage.removeItem('username')
+  // 更新 reactive 变量，确保 UI 即时更新
+  username.value = '未登录'
+  role.value = ''
   router.push({ name: 'Login' })
 }
-
-watch(() => route.path, (p) => {
-  // nothing required; activeMenu is computed from route
-})
 
 function onMenuSelect(index) {
   if (!index) return
@@ -138,6 +174,10 @@ onMounted(() => {
   if (!token && route.name !== 'Login') {
     router.push({ name: 'Login' })
   }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener && window.removeEventListener('storage', onStorageEvent)
 })
 </script>
 
