@@ -110,11 +110,9 @@
           <el-col :span="8">
             <el-form-item label="职称" prop="jobTitleName">
               <el-select v-model="form.jobTitleName" placeholder="请选择" style="width: 100%">
-                <el-option label="正高级" value="正高级" />
-                <el-option label="副高级" value="副高级" />
+                <el-option label="高级" value="高级" />
                 <el-option label="中级" value="中级" />
                 <el-option label="初级" value="初级" />
-                <el-option label="员级" value="员级" />
               </el-select>
             </el-form-item>
           </el-col>

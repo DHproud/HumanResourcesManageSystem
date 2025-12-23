@@ -174,11 +174,18 @@ const handleAdd = async (parentId) => {
 
   if (!name) return ElMessage.warning('请输入机构名称')
 
+  // 根据级别设置orgCode
+  let orgCode = ''
+  if (targetLevel === 1) orgCode = '01'
+  else if (targetLevel === 2) orgCode = '02'
+  else if (targetLevel === 3) orgCode = '03'
+  else return ElMessage.warning('添加失败')
+
   try {
     const res = await request.post('/api/org/add', {
       orgName: name,
       parentId: parentId,
-      orgCode: '00', // 暂定
+      orgCode: orgCode,
       sort: 1
     })
 
